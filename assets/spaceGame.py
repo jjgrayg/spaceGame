@@ -358,13 +358,13 @@ def main():
 
         if paused:
             pause_delay += 1
+            pygame.mixer.music.unpause()
             if keys[pygame.K_RETURN] and pause_delay > FPS/2:
                 pause_delay = 0
                 paused = False
-                print("exit")
-                print (paused)
                 continue
             else:
+                pygame.mixer.music.pause()
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         quit()
@@ -389,7 +389,7 @@ def main():
             if level < 5:
                 num_powerups = int(random.randrange(0, 2))
                 for i in range(wave_length):
-                    enemy = Enemy(random.randrange(50, WIDTH-100), random.randrange(-len(enemies) * 350, -100), "red")
+                    enemy = Enemy(random.randrange(50, WIDTH-100), random.randrange(-4 * 350, -100), "red")
                     enemies.append(enemy)
             elif level >= 5 and level < 15:
                 num_powerups = int(random.randrange(0, 3))
