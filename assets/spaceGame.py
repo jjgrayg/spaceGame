@@ -93,7 +93,10 @@ class Ship:
             if laser.off_screen(HEIGHT):
                 self.lasers.remove(laser)
             elif laser.collision(obj):
-                obj.health -= 10
+                if obj.shield:
+                    obj.shield_health -= 10
+                else:
+                    obj.health -= 10
                 self.lasers.remove(laser)
 
     def cooldown(self):
@@ -153,6 +156,9 @@ class Player(Ship):
     def healthbar(self, window):
         pygame.draw.rect(window, (255, 0, 0), (self.x, self.y + self.ship_img.get_height() + 10, self.ship_img.get_width(), 10))
         pygame.draw.rect(window, (0, 255, 0), (self.x, self.y + self.ship_img.get_height() + 10, self.ship_img.get_width() * (self.health/self.max_health), 10))
+        if self.shield:
+            pygame.draw.rect(window, (0, 0, 255), (self.x, self.y + self.ship_img.get_height() + 10, self.ship_img.get_width() * (self.shield_health/self.max_health), 10))
+
 
     def shoot(self):
         if self.cool_down_counter == 0:
@@ -241,6 +247,7 @@ def main():
 
     # Create fonts
     main_font = pygame.font.SysFont("comicsans", 50)
+    powerup_font = pygame.font.SysFont("comicsans", 40)
     lost_font = pygame.font.SysFont("comicsans", 60)
 
     # List of enemies
@@ -257,6 +264,7 @@ def main():
     num_powerups = 30
     fast_timer = 0
     rapid_timer = 0
+    shield_added = 0
 
     clock = pygame.time.Clock()
 
@@ -310,9 +318,30 @@ def main():
             nuke_label = main_font.render("NUKE READY", 1, (255,255,255))
             WIN.blit(nuke_label, (WIDTH/2 - nuke_label.get_width()/2, 10))
 
+        # Notify of deployed nuke
         if nuke_deployed == True:
             nuke_deployed_label = main_font.render("NUKE DEPLOYED!", 1, (255,255,255))
             WIN.blit(nuke_deployed_label, (WIDTH/2 - nuke_deployed_label.get_width()/2, 10))
+
+        # Powerup sidebar
+        if player.shield:
+            shield_label = powerup_font.render("Shield", 1, (255, 255, 255))
+        else:
+            shield_label = powerup_font.render("Shield", 1, (100, 100, 100))
+            
+        if player.rapid:
+            rapid_label = powerup_font.render("Rapid Fire", 1, (255, 255, 255))
+        else:
+            rapid_label = powerup_font.render("Rapid Fire", 1, (100, 100, 100))
+            
+        if player.fast:
+            fast_label = powerup_font.render("Fast Movement", 1, (255, 255, 255))
+        else:
+            fast_label = powerup_font.render("Fast Movement", 1, (100, 100, 100))
+
+        WIN.blit(shield_label, (10, 50))
+        WIN.blit(rapid_label, (10, 75))
+        WIN.blit(fast_label, (10, 100))
 
         pygame.display.update()
 
@@ -415,8 +444,12 @@ def main():
                     enemy.shoot()
 
             if collide(enemy, player):
-                player.health -= 10
-                enemies.remove(enemy)
+                if player.shield:
+                    player.shield_health -= 10
+                    enemies.remove(enemy)
+                else:
+                    player.health -= 10
+                    enemies.remove(enemy)
             elif enemy.y + enemy.get_height() > HEIGHT:
                 lives -=1
                 enemies.remove(enemy)
@@ -465,6 +498,16 @@ def main():
                 player.rapid = False
         else:
             player.COOLDOWN = 30
+
+        # Control the "shield" powerup
+        if player.shield and shield_added == 0:
+            player.shield_health = 100
+            shield_added = 1
+        elif not player.shield:
+            shield_added = 0
+
+        if player.shield_health == 0:
+            player.shield = False
 
         player.move_lasers(-laser_vel, enemies)
 
