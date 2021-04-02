@@ -261,10 +261,9 @@ def main():
 
     # List of powerups
     powerups = []
-    num_powerups = 30
+    num_powerups = 0
     fast_timer = 0
     rapid_timer = 0
-    shield_added = 0
 
     clock = pygame.time.Clock()
 
@@ -295,10 +294,6 @@ def main():
         # Draw powerups
         for powerup in powerups:
             powerup.draw(WIN)
-
-        # Draw enemies
-        for enemy in enemies:
-            enemy.draw(WIN)
 
         # Draw player
         player.draw(WIN)
@@ -343,6 +338,10 @@ def main():
         WIN.blit(rapid_label, (10, 75))
         WIN.blit(fast_label, (10, 100))
 
+        # Draw enemies
+        for enemy in enemies:
+            enemy.draw(WIN)
+
         pygame.display.update()
 
 
@@ -384,27 +383,29 @@ def main():
                     if event.type == pygame.QUIT:
                         quit()
                 continue
+        if len(enemies) == 0:
+            level += 1
+            wave_length += 3
+            if level < 5:
+                num_powerups = int(random.randrange(0, 2))
+                for i in range(wave_length):
+                    enemy = Enemy(random.randrange(50, WIDTH-100), random.randrange(-len(enemies) * 350, -100), "red")
+                    enemies.append(enemy)
+            elif level >= 5 and level < 15:
+                num_powerups = int(random.randrange(0, 3))
+                for i in range(wave_length):
+                    enemy = Enemy(random.randrange(50, WIDTH-100), random.randrange(-len(enemies) * 350, -100), random.choice(["red", "green"]))
+                    enemies.append(enemy)
+            elif level >= 15:
+                numpowerups = int(random.randrange(0, 5))
+                for i in range(wave_length):
+                    enemy = Enemy(random.randrange(50, WIDTH-100), random.randrange(-len(enemies) * 350, -100), random.choice(["red", "blue", "green"]))
+                    enemies.append(enemy)
 
         if len(powerups) == 0:
             for i in range(num_powerups):
                 powerup = Powerup(random.randrange(50, WIDTH-100), random.randrange(-500, -100), random.choice(["nuke", "fast", "rapidfire", "shield"]))
                 powerups.append(powerup)
-
-        if len(enemies) == 0:
-            level += 1
-            wave_length += 3
-            if level < 5:
-                for i in range(wave_length):
-                    enemy = Enemy(random.randrange(50, WIDTH-100), random.randrange(-500, -100), "red")
-                    enemies.append(enemy)
-            elif level >= 5 and level < 15:
-                for i in range(wave_length):
-                    enemy = Enemy(random.randrange(50, WIDTH-100), random.randrange(-1500, -100), random.choice(["red", "green"]))
-                    enemies.append(enemy)
-            elif level >= 15:
-                for i in range(wave_length):
-                    enemy = Enemy(random.randrange(50, WIDTH-100), random.randrange(-3500, -100), random.choice(["red", "blue", "green"]))
-                    enemies.append(enemy)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -476,6 +477,7 @@ def main():
                     rapid_timer = 0
                 elif powerup.type == "shield":
                     player.shield = True
+                    player.shield_health = 100
                 powerups.remove(powerup)
 
             elif powerup.y + powerup.get_height() > HEIGHT:
@@ -500,12 +502,6 @@ def main():
             player.COOLDOWN = 30
 
         # Control the "shield" powerup
-        if player.shield and shield_added == 0:
-            player.shield_health = 100
-            shield_added = 1
-        elif not player.shield:
-            shield_added = 0
-
         if player.shield_health == 0:
             player.shield = False
 
