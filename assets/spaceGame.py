@@ -41,6 +41,12 @@ YELLOW_LASER = pygame.transform.scale(pygame.image.load(os.path.join("assets", "
 # Game background
 BG = pygame.transform.scale(pygame.image.load(os.path.join("assets", "background-black.png")), (WIDTH, HEIGHT))
 
+# Powerup sprites
+SHIELD_IMG = pygame.transform.scale(pygame.image.load(os.path.join("assets", "pixel_shield_powerup.png")), (30, 30))
+RAPID_FIRE_IMG = pygame.transform.scale(pygame.image.load(os.path.join("assets", "pixel_rapidfire_powerup.png")), (30, 30))
+FAST_IMG = pygame.transform.scale(pygame.image.load(os.path.join("assets", "pixel_fast_powerup.png")), (30, 30))
+NUKE_IMG = pygame.transform.scale(pygame.image.load(os.path.join("assets", "pixel_nuke_powerup.png")), (30, 30))
+
 # Define Laser class
 class Laser:
     def __init__(self, x, y, img):
@@ -110,12 +116,18 @@ class Ship:
 
 # Define Player class
 class Player(Ship):
+
     def __init__(self, x, y, health = 100):
         super().__init__(x, y, health)
         self.ship_img = PLAYER_SHIP_NEUTRAL
         self.laser_img = YELLOW_LASER
         self.mask = pygame.mask.from_surface(self.ship_img)
         self.max_health = health
+        self.shield = False
+        self.shield_health = 0
+        self.nuke = False
+        self.fast = False
+        self.rapid = False
         
     def move_lasers(self, vel, objs):
         self.cooldown()
@@ -184,11 +196,36 @@ class Enemy(Ship):
                 self.lasers.append(laser)
                 self.cool_down_counter = 1
 
+# Define powerup class
+class Powerup:
+    TYPE_MAP = {
+        "shield": (SHIELD_IMG),
+        "rapidfire": (RAPID_FIRE_IMG),
+        "fast": (FAST_IMG),
+        "nuke": (NUKE_IMG)
+    }
+
+    def __init__(self, x, y, typeof):
+        self.x = x
+        self.y = y
+        self.type = typeof
+        self.powerup_img = self.TYPE_MAP[typeof]
+        self.mask = pygame.mask.from_surface(self.powerup_img)
+
+    def move(self, vel):
+        self.y += vel
+
+    def draw(self, window):
+        window.blit(self.powerup_img, (self.x, self.y))
+    
+    def get_height(self):
+        return self.powerup_img.get_height()
+
+
 def collide(obj1, obj2):
     offset_x = obj2.x - obj1.x
     offset_y = obj2.y - obj1.y
     return obj1.mask.overlap(obj2.mask, (offset_x, offset_y)) != None
-
 
 # The game
 def main():
@@ -215,6 +252,12 @@ def main():
     player_vel = 5
     laser_vel = 5
 
+    # List of powerups
+    powerups = []
+    num_powerups = 30
+    fast_timer = 0
+    rapid_timer = 0
+
     clock = pygame.time.Clock()
 
     # Create player
@@ -222,6 +265,13 @@ def main():
 
     lost = False
     lost_count = 0
+    
+    paused = False
+    pause_delay = 0
+
+    nuke_deployed = False
+    nuke_deployed_notification = 0
+    nuke_enemies = False
 
     def redraw_window():
         # Draw BG
@@ -233,6 +283,10 @@ def main():
 
         WIN.blit(lives_label, (10, 10))
         WIN.blit(level_label, (WIDTH - level_label.get_width() - 10, 10))
+
+        # Draw powerups
+        for powerup in powerups:
+            powerup.draw(WIN)
 
         # Draw enemies
         for enemy in enemies:
@@ -246,6 +300,20 @@ def main():
             lost_label = lost_font.render("You Lost!", 1, (255, 255, 255))
             WIN.blit(lost_label, (WIDTH/2 - lost_label.get_width()/2, 350))
 
+        # If paused post a pause screen
+        if paused == True:
+            pause_label = lost_font.render("Paused. Press enter to continue...", 1, (255, 255, 255))
+            WIN.blit(pause_label, (WIDTH/2 - pause_label.get_width()/2, 350))
+
+        # Notfiy player if they have nuke ready
+        if player.nuke == True:
+            nuke_label = main_font.render("NUKE READY", 1, (255,255,255))
+            WIN.blit(nuke_label, (WIDTH/2 - nuke_label.get_width()/2, 10))
+
+        if nuke_deployed == True:
+            nuke_deployed_label = main_font.render("NUKE DEPLOYED!", 1, (255,255,255))
+            WIN.blit(nuke_deployed_label, (WIDTH/2 - nuke_deployed_label.get_width()/2, 10))
+
         pygame.display.update()
 
 
@@ -254,9 +322,30 @@ def main():
 
         redraw_window()
 
+        keys = pygame.key.get_pressed()
+
         if lives <= 0 or player.health <= 0:
             lost = True
             lost_count += 1
+
+        if paused:
+            pause_delay += 1
+            if keys[pygame.K_RETURN] and pause_delay > FPS/2:
+                pause_delay = 0
+                paused = False
+                print("exit")
+                print (paused)
+                continue
+            else:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        quit()
+                continue
+
+        if nuke_deployed:
+            nuke_deployed_notification += 1
+            if nuke_deployed_notification > FPS*3:
+                nuke_deployed = False
 
         if lost:
             if lost_count > FPS * 5:
@@ -266,6 +355,11 @@ def main():
                     if event.type == pygame.QUIT:
                         quit()
                 continue
+
+        if len(powerups) == 0:
+            for i in range(num_powerups):
+                powerup = Powerup(random.randrange(50, WIDTH-100), random.randrange(-500, -100), random.choice(["nuke", "fast", "rapidfire", "shield"]))
+                powerups.append(powerup)
 
         if len(enemies) == 0:
             level += 1
@@ -287,7 +381,6 @@ def main():
             if event.type == pygame.QUIT:
                 quit()
 
-        keys = pygame.key.get_pressed()
         if keys[pygame.K_a] and player.x - player_vel > 0: # Move left
             player.x -= player_vel
             player.ship_img = PLAYER_SHIP_LEFT
@@ -300,8 +393,14 @@ def main():
         if keys[pygame.K_d] and player.x + player_vel + player.get_width() < WIDTH: # Move right
             player.x += player_vel
             player.ship_img = PLAYER_SHIP_RIGHT
-        if keys[pygame.K_SPACE]: # Move right
+        if keys[pygame.K_SPACE]:
             player.shoot()
+        if keys[pygame.K_ESCAPE]:
+            paused = True
+        if keys[pygame.K_z] and player.nuke:
+            nuke_deployed = True
+            nuke_enemies = True
+            player.nuke = False
         if not (keys[pygame.K_d] or keys[pygame.K_s] or keys[pygame.K_w] or keys[pygame.K_a]):
             player.ship_img = PLAYER_SHIP_NEUTRAL
 
@@ -321,6 +420,51 @@ def main():
             elif enemy.y + enemy.get_height() > HEIGHT:
                 lives -=1
                 enemies.remove(enemy)
+
+        if nuke_enemies:
+            for enemy in enemies[:]:
+                enemies.remove(enemy)
+            nuke_enemies = False
+
+        ##################
+        # Manage powerups
+        ##################
+        for powerup in powerups[:]:
+            powerup.move(enemy_vel)
+
+            if collide(powerup, player):
+                if powerup.type == "nuke":
+                    player.nuke = True
+                elif powerup.type == "fast":
+                    player.fast = True
+                    fast_timer = 0
+                elif powerup.type == "rapidfire":
+                    player.rapid = True
+                    rapid_timer = 0
+                elif powerup.type == "shield":
+                    player.shield = True
+                powerups.remove(powerup)
+
+            elif powerup.y + powerup.get_height() > HEIGHT:
+                powerups.remove(powerup)
+
+        # Control the "fast" powerup
+        if player.fast:
+            player_vel = 10
+            fast_timer += 1
+            if fast_timer > FPS*15:
+                player.fast = False
+        else:
+            player_vel = 5
+
+        # Control the "rapid" powerup
+        if player.rapid:
+            player.COOLDOWN = 10
+            rapid_timer += 1
+            if rapid_timer > FPS*15:
+                player.rapid = False
+        else:
+            player.COOLDOWN = 30
 
         player.move_lasers(-laser_vel, enemies)
 
