@@ -302,6 +302,7 @@ def main():
         if lost == True:
             lost_label = lost_font.render("You Lost!", 1, (255, 255, 255))
             WIN.blit(lost_label, (WIDTH/2 - lost_label.get_width()/2, 350))
+            pygame.mixer.music.pause()
 
         # If paused post a pause screen
         if paused == True:
@@ -384,28 +385,30 @@ def main():
                         quit()
                 continue
         if len(enemies) == 0:
+            new_round = True
             level += 1
             wave_length += 3
             if level < 5:
                 num_powerups = int(random.randrange(0, 2))
                 for i in range(wave_length):
-                    enemy = Enemy(random.randrange(50, WIDTH-100), random.randrange(-4 * 350, -100), "red")
+                    enemy = Enemy(random.randrange(50, WIDTH-100), random.randrange(-wave_length * 100, -100), "red")
                     enemies.append(enemy)
             elif level >= 5 and level < 15:
                 num_powerups = int(random.randrange(0, 3))
                 for i in range(wave_length):
-                    enemy = Enemy(random.randrange(50, WIDTH-100), random.randrange(-len(enemies) * 350, -100), random.choice(["red", "green"]))
+                    enemy = Enemy(random.randrange(50, WIDTH-100), random.randrange(-wave_length * 100, -100), random.choice(["red", "green"]))
                     enemies.append(enemy)
             elif level >= 15:
                 numpowerups = int(random.randrange(0, 5))
                 for i in range(wave_length):
-                    enemy = Enemy(random.randrange(50, WIDTH-100), random.randrange(-len(enemies) * 350, -100), random.choice(["red", "blue", "green"]))
+                    enemy = Enemy(random.randrange(50, WIDTH-100), random.randrange(-wave_length * 100, -100), random.choice(["red", "blue", "green"]))
                     enemies.append(enemy)
 
-        if len(powerups) == 0:
+        if len(powerups) == 0 and new_round:
             for i in range(num_powerups):
                 powerup = Powerup(random.randrange(50, WIDTH-100), random.randrange(-500, -100), random.choice(["nuke", "fast", "rapidfire", "shield"]))
                 powerups.append(powerup)
+            new_round = False
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -431,6 +434,8 @@ def main():
             nuke_deployed = True
             nuke_enemies = True
             player.nuke = False
+        if keys[pygame.K_UP]:
+            level += 1
         if not (keys[pygame.K_d] or keys[pygame.K_s] or keys[pygame.K_w] or keys[pygame.K_a]):
             player.ship_img = PLAYER_SHIP_NEUTRAL
 
